@@ -1,40 +1,67 @@
-import { Request, Response } from "express";
-
+import type { Request, Response } from "express";
+import { createChirp, getChirp, getChirps } from "../../db/db_queries/saveChirp.js";
 import { respondWithJSON } from "../json.js";
-import { Error400 } from "./errors.js";
-import { saveChirpToDB } from "../../db/db_queries/saveChirp.js";
-import { chirps } from "../../db/schema.js";
+import { BadRequestError, NotFoundError } from "../errors.js";
 
-async function validateChirp(body: string) {
-    const filter = ["kerfuffle", "sharbert", "fornax"];
 
-    if (body.length > 140) {
-        throw new Error400("Chirp is too long");
-    }
 
-    return body
-        .split(" ")
-        .map(word =>
-            filter.includes(word.toLowerCase()) ? "****" : word
-        )
-        .join(" ");
+export async function handlerChirpsCreate(req: Request, res: Response) {
+    type parameters = {
+        body: string;
+        userId: string;
+    };
+
+    const params: parameters = req.body;
+
+    const cleaned = validateChirp(params.body);
+    const chirp = await createChirp({ body: cleaned, userId: params.userId });
+
+    respondWithJSON(res, 201, chirp);
 }
-export async function handlerChirps(req: Request, res: Response) {
 
-    type Parameters = {
-        body: string,
-        userId: string,
+function validateChirp(body: string) {
+    const maxChirpLength = 140;
+    if (body.length > maxChirpLength) {
+        throw new BadRequestError(
+            `Chirp is too long. Max length is ${maxChirpLength}`,
+        );
     }
-    const params: Parameters = req.body;
-    const valid = await validateChirp(params.body);
-    if (!valid) {
-        throw new Error400("Invalid chirp")
-    }
-    params.body = valid;
-    saveChirpToDB(params);
 
-    respondWithJSON(res, 201, {
-        body: params.body,
-        userId: params.userId
-    })
+    const badWords = ["kerfuffle", "sharbert", "fornax"];
+    return getCleanedBody(body, badWords);
+}
+
+function getCleanedBody(body: string, badWords: string[]) {
+    const words = body.split(" ");
+
+    for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        const loweredWord = word.toLowerCase();
+        if (badWords.includes(loweredWord)) {
+            words[i] = "****";
+        }
+    }
+
+    const cleaned = words.join(" ");
+    return cleaned;
+}
+
+export async function handlerChirpsRetrieve(_: Request, res: Response) {
+    const chirps = await getChirps();
+    respondWithJSON(res, 200, chirps);
+}
+
+export async function handlerChirpsGet(req: Request, res: Response) {
+    const { chirpId } = req.params;
+
+    if (typeof chirpId !== "string") {
+        throw new BadRequestError("Invalid chirp ID");
+    }
+
+    const chirp = await getChirp(chirpId);
+    if (!chirp) {
+        throw new NotFoundError(`Chirp with chirpId: ${chirpId} not found`);
+    }
+
+    respondWithJSON(res, 200, chirp);
 }
