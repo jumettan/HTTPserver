@@ -19,4 +19,7 @@ export const config = {
         url: envOrThrow("DB_URL"),
         migrationConfig: migrationConfig,
     },
+    jwt: {
+        secret: envOrThrow("JWT_SECRET")
+    }
 };

@@ -1,2 +1,2 @@
 ALTER TABLE "chirps"
-ADD COLUMN "body" text NOT NULL DEFAULT '';
+ADD COLUMN IF NOT EXISTS "body" text NOT NULL DEFAULT '';

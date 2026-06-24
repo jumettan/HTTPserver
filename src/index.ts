@@ -16,6 +16,9 @@ import { handlerMetrics } from "./api/handlers/metrics.js";
 import { handlerReset } from "./api/handlers/delUsers.js";
 import { handlerCreateUser } from "./api/handlers/users.js";
 import { handlerChirpsCreate, handlerChirpsGet, handlerChirpsRetrieve } from "./api/handlers/chirps.js";
+import { handlerLogin } from "./api/handlers/login.js";
+import { handlerRefreshToken } from "./api/handlers/refresh.js";
+import { handlerRevoke } from "./api/handlers/revokes.js";
 
 
 const migrationClient = postgres(config.db.url, { max: 1 });
@@ -24,6 +27,11 @@ await migrate(drizzle(migrationClient), config.db.migrationConfig);
 const app = express();
 
 app.use(middlewareLogResponse);
+
+app.post("/admin/reset", (req, res, next) => {
+    Promise.resolve(handlerReset(req, res)).catch(next);
+});
+
 app.use(express.json());
 
 app.use("/app", middlewareMetricsInc, express.static("./src/app"));
@@ -33,9 +41,6 @@ app.get("/api/healthz", (req, res, next) => {
 });
 app.get("/admin/metrics", (req, res, next) => {
     Promise.resolve(handlerMetrics(req, res)).catch(next);
-});
-app.post("/admin/reset", (req, res, next) => {
-    Promise.resolve(handlerReset(req, res)).catch(next);
 });
 
 app.post("/api/users", (req, res, next) => {
@@ -48,9 +53,19 @@ app.post("/api/chirps", (req, res, next) => {
 app.get("/api/chirps", (req, res, next) => {
     Promise.resolve(handlerChirpsRetrieve(req, res)).catch(next);
 });
+app.post("/api/login", (req, res, next) => {
+    Promise.resolve(handlerLogin(req, res)).catch(next);
+})
 app.get("/api/chirps/:chirpId", (req, res, next) => {
     Promise.resolve(handlerChirpsGet(req, res)).catch(next);
 });
+app.post("/api/refresh", (req, res, next) => {
+    Promise.resolve(handlerRefreshToken(req, res)).catch(next);
+})
+
+app.post("/api/revoke", (req, res, next) => {
+    Promise.resolve(handlerRevoke(req, res)).catch(next);
+})
 
 app.use(errorMiddleWare);
 
